@@ -29,17 +29,19 @@ char *semnames[] = {"/boil", "/mix", "/wrap", "/freeze"};
 int populateq(job** qlist, int qinfo[]) {
 	FILE *fpjob = fopen("job2.info", "r");
   int i = 0;
+	int totaljobs = 0;
 	for(i=0;i<10;i++) {
 		qinfo[i] = 0;
 	}
 	//qlist[0].totaltasks = 100;
 	// strcpy(qlist->name, "dafuq");
-	listjobs(fpjob, qlist, qinfo);
+	totaljobs = listjobs(fpjob, qlist, qinfo);
 	for(i=0;i<5;i++) {
 		printf("Front Rear: %d %d", qinfo[i], qinfo[5+i]);
 	}
 	fflush(NULL);
-		//for(i=0;i<3;i++) printf("%s\n", qlist[i].name);
+	return totaljobs;
+	//for(i=0;i<3;i++) printf("%s\n", qlist[i].name);
 	//printf("First job name: %d\n", qlist[0].totaltasks );
 }
 
@@ -52,36 +54,40 @@ int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, in
 	int qempty = 1;
 	int * sem_q = sem_open(sem_name, 0);
 	int *semp = sem_open("/partial", 0);
-	//while(1) {
+	while(1) {
 		sem_wait(sem_q);
-		printf("Instance: %d. Machine: %s. Entered critical section.", instance, machinename);
+		//printf("Instance: %d. Machine: %s. Entered critical section\n", instance, machinename);
 		//for(i=0;i<10;i++) printf("Qinfo %d: %d\n", i, qinfo_child[i]);
 	  if((qempty = isempty(&qinfo_child[j], &qinfo_child[5+j])==1)) { 
-										printf("Function reaches here. Machine: %s. Rear: %d. Isempty: %d\n", machinename, qinfo_child[5+j], isempty(&qinfo_child[j], &qinfo_child[j+5]));
+										//printf("Function reaches here. Machine: %s. Rear: %d. Isempty: %d\n", machinename, qinfo_child[5+j], isempty(&qinfo_child[j], &qinfo_child[j+5]));
 										sem_post(sem_q);
-										//continue;	
+										sleep(1);
+										continue;	
 		}
 		else {
 		job currjob = popq(job_child, &qinfo_child[j], &qinfo_child[5+j]);
-		sleep(1);
+		printf("Machine: %s executing job: %s taskv: %s task: %d\n", machinename, currjob.name, currjob.taskorder[currjob.currenttasknum], currjob.currenttasknum);
+		usleep(100*1000);
 		currjob.currenttasknum++;
 		insertq(partialq, currjob, &qinfo_child[4], &qinfo_child[9]);
 		*(statusvar+j)=1;
-		printf(" Exited critical section\n");
+		//printf(" Exited critical section\n");
 		fflush(NULL);
 		sem_post(sem_q);
 	//	break;
+		}
 	}
 	exit(0);
 }
 
-int pollchildren(job* qlist[], int *statusarr, int instance, int qinfo[], job* partialq, sem_t *partial_sem){
+int pollchildren(job* qlist[], int *statusarr, int instance, int qinfo[], job* partialq, sem_t *partial_sem, int totaljobs){
 	job partialjob;
+	int finishedjobs = 0;
 	int i = 0, j = 0, qnum, finish = 0;
-	while(1) {
+	while(finishedjobs<totaljobs) {
 		for(i=0;i<nummachines;i++) {
 			if(*(statusarr+i)>=1) {
-				printf("From partial queue ");
+				//printf("From partial queue ");
 				sem_wait(partial_sem);
 				partialjob = popq(partialq, &qinfo[4], &qinfo[9]);
 				sem_post(partial_sem);
@@ -89,11 +95,14 @@ int pollchildren(job* qlist[], int *statusarr, int instance, int qinfo[], job* p
 				if(partialjob.currenttasknum < partialjob.totaltasks) {
 					insertq(qlist[qnum],partialjob, &qinfo[qnum], &qinfo[qnum+5]);
 				}
-				else finish = 1;
+				else {
+								finish = 1; finishedjobs++;
+				}
 			}
 			*(statusarr+i) = 0;
-		} j++; if(j>10) break; if(finish ==1 ) break;
-			sleep(1);
+		} j++; //if(j>10) break; if(finish ==1 ) break;
+			usleep(1000*100);
+			//printf("Total jobs: %d finished: %d\n", totaljobs, finishedjobs);
 	}
 	return 0;
 }
@@ -106,6 +115,7 @@ int buildjobqs() {
 	job *job_child, *job_parent;
 	task *tasklist;
 	int pid[10];
+	int totaljobs = 0;
 	//Variables for partially completed queue
 	int partial_id;
 	job *partial_parent, *partial_child;
@@ -142,7 +152,7 @@ int buildjobqs() {
   if(sh_qinfo <0) printf("sh_qinfo failed\n");
  	if(partial_id<0) printf("partial_id failed\n");
 
-	populateq(qlist, qinfo);
+	totaljobs = populateq(qlist, qinfo);
 	for(i=0;i<nummachines;i++) {
 		for(j=0;j<machineinstances[i];j++){
 			if((pid[instance]=fork())==0) {
@@ -158,7 +168,7 @@ int buildjobqs() {
 	}	
 		i = 0;
 		printf("Parent here\n");
-		pollchildren(qlist, statusarr, instance, qinfo, partial_parent, partial_sem);
+		pollchildren(qlist, statusarr, instance, qinfo, partial_parent, partial_sem, totaljobs);
 		for(i=0;i<instance;i++)  kill(pid[i], SIGKILL);//kill child process
 		for(i=0;i<nummachines;i++)	{
 			shmctl(shmid[i], IPC_RMID, 0);

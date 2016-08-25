@@ -21,6 +21,7 @@ typedef struct jobstruct {
 	char actlist[100][250];
 	char actremain[100][250];
 	char machineorder[100][250];
+	char taskorder[100][250];
 	int totaltasks;
 	int currenttasknum;
   int inuse;	
@@ -76,7 +77,7 @@ void printq(job *jq, int front, int rear) {
 
 void insertq(job *jq, job a, int *front, int *rear) {
 	int i;
-  printf("Insertq called. Parameters: %d %d %d. ", *front, *rear, QLEN);
+  //printf("Insertq called. Parameters: %d %d %d. ", *front, *rear, QLEN);
 	if(*rear >= QLEN-1) printf("Queue overflow\n");
 	else {
 		jq[*rear] = a;
@@ -91,8 +92,8 @@ job popq(job *jq, int *front, int *rear) {
  else {
 	 	element = jq[*front];
 		(*front)++;
-		printf("Popped: %s\n", element.name);
-		printf("Front: %d Rear: %d\n", *front, *rear);
+		//printf("Popped: %s\n", element.name);
+		//printf("Front: %d Rear: %d\n", *front, *rear);
 		return element;
  } 
 }
@@ -154,19 +155,21 @@ task* gettasklist(FILE *fptask) {
 	return tasklist;
 }
 
-void listjobs(FILE *fpjob, job* joblist[], int qinfo[]) {
+int listjobs(FILE *fpjob, job* joblist[], int qinfo[]) {
 				char *buffer = NULL;
 				size_t bufsize = 0;
 				char s[1000];
 				char jobname[1000];
-				char *targetmachine;
+				char *targetmachine, *taskv;
 				int queuenum;
 			  int front[5] = {0};
 				int rear[5] = {0};
 				int bytesread = 0, bytesnow, charsread = 0;
+				int totaljobs = 0;
 				//job *joblist = (job*)malloc(100*sizeof(job));
 				int i = 0, j = 0;
 				while(getline(&buffer, &bufsize, fpjob)>0) {
+					totaljobs++;
 					sscanf(buffer, "%s%n", jobname, &bytesnow);	
 				  //strcpy(joblistqueuenum[i].name, s);
 					bytesread = bytesnow;
@@ -180,7 +183,9 @@ void listjobs(FILE *fpjob, job* joblist[], int qinfo[]) {
 								strcpy(joblist[queuenum][rear[queuenum]].actremain[j],s);
 								joblist[queuenum][rear[queuenum]].currenttasknum = 0;
 								targetmachine = strtok(s, ":");
-								strcpy(joblist[queuenum][rear[queuenum]].machineorder[j],s);
+								strcpy(joblist[queuenum][rear[queuenum]].machineorder[j],targetmachine);
+								taskv = strtok(NULL, ":");
+								strcpy(joblist[queuenum][rear[queuenum]].taskorder[j],taskv);
 								//printf("%s ", s);
 								bytesread+=bytesnow;
 								j++;
@@ -198,7 +203,8 @@ void listjobs(FILE *fpjob, job* joblist[], int qinfo[]) {
 				}
 				for(i=0;i<4;i++){
 					//printq(joblist[i], 0, 3);
-				}	
+				}
+			return totaljobs;	
 				//printf("Jobnames: %s Activity list: %s Totaltasks: %d Thirdtask: %s\n", joblist[i].name, joblist[i].actlist[2], joblist[i].totaltasks, joblist[i].actremain[2]);
 	//return joblist;
 }
