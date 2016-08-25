@@ -1,0 +1,216 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+<head>
+  <meta name="generator" content=
+  "HTML Tidy for Linux/x86 (vers 1st September 2003), see www.w3.org">
+
+  <title>The GNU C Library</title>
+  <meta http-equiv="Content-Type" content="text/html">
+  <meta name="description" content="The GNU C Library">
+  <meta name="generator" content="makeinfo 4.3">
+  <link href="http://www.gnu.org/software/texinfo/" rel=
+  "generator-home">
+</head>
+
+<body>
+  <div class="node">
+    <p>Node:<a name="POSIX%20Semaphores">POSIX Semaphores</a>,
+    Next:<a rel="next" accesskey="n" href=
+    "Thread-Specific-Data.html#Thread-Specific%20Data">Thread-Specific
+    Data</a>, Previous:<a rel="previous" accesskey="p" href=
+    "Condition-Variables.html#Condition%20Variables">Condition
+    Variables</a>, Up:<a rel="up" accesskey="u" href=
+    "POSIX-Threads.html#POSIX%20Threads">POSIX Threads</a></p>
+    <hr>
+  </div>
+
+  <h3 class="section">POSIX Semaphores</h3>
+
+  <p>Semaphores are counters for resources shared between threads.
+  The basic operations on semaphores are: increment the counter
+  atomically, and wait until the counter is non-null and decrement
+  it atomically.</p>
+
+  <p>Semaphores have a maximum value past which they cannot be
+  incremented. The macro <code>SEM_VALUE_MAX</code> is defined to
+  be this maximum value. In the GNU C library,
+  <code>SEM_VALUE_MAX</code> is equal to <code>INT_MAX</code> (see
+  <a href="Range-of-Type.html#Range%20of%20Type">Range of
+  Type</a>), but it may be much smaller on other systems.</p>
+
+  <p>The pthreads library implements POSIX 1003.1b semaphores.
+  These should not be confused with System V semaphores
+  (<code>ipc</code>, <code>semctl</code> and
+  <code>semop</code>).</p>
+
+  <p>All the semaphore functions and macros are defined in
+  <code>semaphore.h</code>.</p>
+
+  <table width="100%">
+    <tr>
+      <td align="left">int <b>sem_init</b> (<i>sem_t
+      *</i><var>sem</var><i>, int</i> <var>pshared</var><i>,
+      unsigned int</i> <var>value</var>)</td>
+
+      <td align="right">Function</td>
+    </tr>
+  </table>
+
+  <table width="95%" align="center">
+    <tr>
+      <td>
+        <code>sem_init</code> initializes the semaphore object
+        pointed to by <var>sem</var>. The count associated with the
+        semaphore is set initially to <var>value</var>. The
+        <var>pshared</var> argument indicates whether the semaphore
+        is local to the current process (<var>pshared</var> is
+        zero) or is to be shared between several processes
+        (<var>pshared</var> is not zero).
+
+        <p>On success <code>sem_init</code> returns 0. On failure
+        it returns -1 and sets <var>errno</var> to one of the
+        following values:</p>
+
+        <dl>
+          <dt><code>EINVAL</code></dt>
+
+          <dd><var>value</var> exceeds the maximal counter value
+          <code>SEM_VALUE_MAX</code><br></dd>
+
+          <dt><code>ENOSYS</code></dt>
+
+          <dd><var>pshared</var> is not zero. LinuxThreads
+          currently does not support process-shared semaphores.
+          (This will eventually change.)</dd>
+        </dl>
+      </td>
+    </tr>
+  </table>
+
+  <table width="100%">
+    <tr>
+      <td align="left">int <b>sem_destroy</b> (<i>sem_t *</i>
+      <var>sem</var>)</td>
+
+      <td align="right">Function</td>
+    </tr>
+  </table>
+
+  <table width="95%" align="center">
+    <tr>
+      <td>
+        <code>sem_destroy</code> destroys a semaphore object,
+        freeing the resources it might hold. If any threads are
+        waiting on the semaphore when <code>sem_destroy</code> is
+        called, it fails and sets <var>errno</var> to
+        <code>EBUSY</code>.
+
+        <p>In the LinuxThreads implementation, no resources are
+        associated with semaphore objects, thus
+        <code>sem_destroy</code> actually does nothing except
+        checking that no thread is waiting on the semaphore. This
+        will change when process-shared semaphores are
+        implemented.</p>
+      </td>
+    </tr>
+  </table>
+
+  <table width="100%">
+    <tr>
+      <td align="left">int <b>sem_wait</b> (<i>sem_t *</i>
+      <var>sem</var>)</td>
+
+      <td align="right">Function</td>
+    </tr>
+  </table>
+
+  <table width="95%" align="center">
+    <tr>
+      <td>
+        <code>sem_wait</code> suspends the calling thread until the
+        semaphore pointed to by <var>sem</var> has non-zero count.
+        It then atomically decreases the semaphore count.
+
+        <p><code>sem_wait</code> is a cancellation point. It always
+        returns 0.</p>
+      </td>
+    </tr>
+  </table>
+
+  <table width="100%">
+    <tr>
+      <td align="left">int <b>sem_trywait</b> (<i>sem_t *</i>
+      <var>sem</var>)</td>
+
+      <td align="right">Function</td>
+    </tr>
+  </table>
+
+  <table width="95%" align="center">
+    <tr>
+      <td><code>sem_trywait</code> is a non-blocking variant of
+      <code>sem_wait</code>. If the semaphore pointed to by
+      <var>sem</var> has non-zero count, the count is atomically
+      decreased and <code>sem_trywait</code> immediately returns 0.
+      If the semaphore count is zero, <code>sem_trywait</code>
+      immediately returns -1 and sets errno to
+      <code>EAGAIN</code>.</td>
+    </tr>
+  </table>
+
+  <table width="100%">
+    <tr>
+      <td align="left">int <b>sem_post</b> (<i>sem_t *</i>
+      <var>sem</var>)</td>
+
+      <td align="right">Function</td>
+    </tr>
+  </table>
+
+  <table width="95%" align="center">
+    <tr>
+      <td>
+        <code>sem_post</code> atomically increases the count of the
+        semaphore pointed to by <var>sem</var>. This function never
+        blocks.
+
+        <p>On processors supporting atomic compare-and-swap (Intel
+        486, Pentium and later, Alpha, PowerPC, MIPS II, Motorola
+        68k, Ultrasparc), the <code>sem_post</code> function is can
+        safely be called from signal handlers. This is the only
+        thread synchronization function provided by POSIX threads
+        that is async-signal safe. On the Intel 386 and earlier
+        Sparc chips, the current LinuxThreads implementation of
+        <code>sem_post</code> is not async-signal safe, because the
+        hardware does not support the required atomic
+        operations.</p>
+
+        <p><code>sem_post</code> always succeeds and returns 0,
+        unless the semaphore count would exceed
+        <code>SEM_VALUE_MAX</code> after being incremented. In that
+        case <code>sem_post</code> returns -1 and sets
+        <var>errno</var> to <code>EINVAL</code>. The semaphore
+        count is left unchanged.</p>
+      </td>
+    </tr>
+  </table>
+
+  <table width="100%">
+    <tr>
+      <td align="left">int <b>sem_getvalue</b> (<i>sem_t *</i>
+      <var>sem</var><i>, int *</i> <var>sval</var>)</td>
+
+      <td align="right">Function</td>
+    </tr>
+  </table>
+
+  <table width="95%" align="center">
+    <tr>
+      <td><code>sem_getvalue</code> stores in the location pointed
+      to by <var>sval</var> the current count of the semaphore
+      <var>sem</var>. It always returns 0.</td>
+    </tr>
+  </table>
+</body>
+</html>
