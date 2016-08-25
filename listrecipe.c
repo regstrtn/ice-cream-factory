@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/wait.h>
-#define QLEN 500
+#define QLEN 100
 
 /******************************************************************
  * Filename: 
@@ -20,6 +20,7 @@ typedef struct jobstruct {
 	char name[250];
 	char actlist[100][250];
 	char actremain[100][250];
+	char machineorder[100][250];
 	int totaltasks;
 	int currenttasknum;
   int inuse;	
@@ -54,6 +55,12 @@ extern char *machinenames[];
 //int front[4] = {0};
 //int rear[4] = {0};
 
+int isempty(int *front, int *rear) {
+	if(*rear >= QLEN) return 1;
+	if(*front == *rear) return 1;
+	else return 0;
+}
+
 int getqueuenum(char *targetmachine) {
 	int i = 0;
 	for(i=0;i<4;i++) {
@@ -69,7 +76,8 @@ void printq(job *jq, int front, int rear) {
 
 void insertq(job *jq, job a, int *front, int *rear) {
 	int i;
-	if(*rear == QLEN) printf("Queue overflow\n");
+  printf("Insertq called. Parameters: %d %d %d. ", *front, *rear, QLEN);
+	if(*rear >= QLEN-1) printf("Queue overflow\n");
 	else {
 		jq[*rear] = a;
 		(*rear)++;
@@ -80,12 +88,11 @@ job popq(job *jq, int *front, int *rear) {
  int i = *front;
  job element;
  if(*front>=*rear) printf("Queue empty\n");
- //printf("Popq called. Parameters: %d %d. ", i, *rear);
  else {
 	 	element = jq[*front];
 		(*front)++;
 		printf("Popped: %s\n", element.name);
-		printf("Front: %d\n", *front);
+		printf("Front: %d Rear: %d\n", *front, *rear);
 		return element;
  } 
 }
@@ -167,17 +174,19 @@ void listjobs(FILE *fpjob, job* joblist[], int qinfo[]) {
 					sscanf(buffer+bytesread, "%s%n", s, &bytesnow);
 					targetmachine = strtok(s,":");
 					queuenum = getqueuenum(targetmachine);
-					printf("Queuenum for targetmachine %s: %d\n", targetmachine, queuenum);
+					//printf("Queuenum for targetmachine %s: %d\n", targetmachine, queuenum);
 					while((charsread = sscanf(buffer+bytesread, "%s%n", s, &bytesnow))>0){ 
 								strcpy(joblist[queuenum][rear[queuenum]].actlist[j],s);
 								strcpy(joblist[queuenum][rear[queuenum]].actremain[j],s);
 								joblist[queuenum][rear[queuenum]].currenttasknum = 0;
+								targetmachine = strtok(s, ":");
+								strcpy(joblist[queuenum][rear[queuenum]].machineorder[j],s);
 								//printf("%s ", s);
 								bytesread+=bytesnow;
 								j++;
 					}
 				  strcpy(joblist[queuenum][rear[queuenum]].name, jobname);	
-					printf("queuenum: %d jobname: %s I: %d\n", queuenum, jobname, rear[queuenum]);
+					//printf("queuenum: %d jobname: %s I: %d\n", queuenum, jobname, rear[queuenum]);
 					joblist[queuenum][rear[queuenum]].totaltasks = j;
 					rear[queuenum] = rear[queuenum]+1;
 					//if(i>3) break;
@@ -185,6 +194,7 @@ void listjobs(FILE *fpjob, job* joblist[], int qinfo[]) {
 				}
 				for(i=0;i<5;i++) {
 					qinfo[i+5] = rear[i];
+					printf("Rear queue: %d\n", qinfo[i+5]);
 				}
 				for(i=0;i<4;i++){
 					//printq(joblist[i], 0, 3);
