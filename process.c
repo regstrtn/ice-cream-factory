@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <sys/shm.h>
 #include "listrecipe.c"
+#include "unittest.c"
 
 /******************************************************************
  * Filename: 
@@ -20,12 +21,13 @@
  *
  * ****************************************************************/
 
-char *machinenames[] = {"boil", "mix", "wrap", "freeze"};
-int nummachines = 4; //Later have this picked up programmatically
-int machineinstances[4] = {2, 3, 2, 3};
-int numinstances = 10;
-char *semnames[] = {"/boil", "/mix", "/wrap", "/freeze"};
+//char *machinenames[] = {"boil", "mix", "wrap", "freeze"};
+//int nummachines = 4; //Later have this picked up programmatically
+//int machineinstances[4] = {2, 3, 2, 3};
+//int numinstances = 10;
+//char *semnames[] = {"/boil", "/mix", "/wrap", "/freeze"};
 
+/*
 int populateq(job** qlist, int qinfo[]) {
 	FILE *fpjob = fopen("job2.info", "r");
   int i = 0;
@@ -189,9 +191,20 @@ void sighandler(int sig_num) {
 	sem_unlink("/partial");
 	exit(0);
 }
-
+*/
 int main(int argc, char **argv){
-  signal(SIGINT, sighandler);
-	buildjobqs();
+ // signal(SIGINT, sighandler);
+	char *taskfile = "slave2.info";
+	int nummachines = getnummachines(taskfile);
+	char machinenames[nummachines][100];
+  char semnames[nummachines][100];
+	int machineinstances[nummachines];
+	int timereq[100];
+	char tasks[100][100];
+	int numinstances = 0;
+	int instances =  getmachinelist(taskfile, machinenames, machineinstances, tasks, timereq, &numinstances, semnames); 
+	printf("Instances from main: %s %s \n", tasks[0], timereq[0]); fflush(NULL);
+	unittest(nummachines, machinenames, machineinstances, tasks, timereq, instances-nummachines, semnames);
+	//buildjobqs();
 	return 0;
 }

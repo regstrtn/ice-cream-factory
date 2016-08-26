@@ -50,6 +50,16 @@ void insertq(job *jq, job a, int *front, int *rear);
 void printq(job *jq, int front, int rear);
 job popq(job *jq, int *front, int *rear);
 
+int getnummachines(char *taskfile) {
+ FILE *fptask = fopen(taskfile, "r");
+ fseek(fptask, 0, SEEK_SET);
+ char *buffer = NULL;
+ int bufsize = 0;
+ int c;
+ int machines = 0;
+ while((c=getline(&buffer, &bufsize, fptask))>0)machines++;
+ return machines;
+}
 
 extern char *machinenames[];
 //char* machinenames[4] = {"boil", "mix", "wrap", "freeze"};
@@ -62,7 +72,7 @@ int isempty(int *front, int *rear) {
 	else return 0;
 }
 
-int getqueuenum(char *targetmachine) {
+int getqueuenum(char *targetmachine, char **machinenames) {
 	int i = 0;
 	for(i=0;i<4;i++) {
 		if(strcmp(targetmachine, machinenames[i])==0) return i;
@@ -99,31 +109,34 @@ job popq(job *jq, int *front, int *rear) {
 }
 
 
-machine* getmachinelist(FILE *fptask) {
+int getmachinelist(char *taskfile, char machinenames[][100], int machineinstances[], char tasks[][100], int timereq[], int *numinstances, char semnames[][100]) {
+				FILE *fptask = fopen(taskfile, "r");
 				fseek(fptask, 0, SEEK_SET);
 				char *buffer = NULL;
 				size_t bufsize = 0;
-				char s[1000], m[1000];
+				char s[99], m[97], sem[99];
 				int bytesread = 0, bytesnow, charsread = 0;
-				int machinecount = 0, timereq = 0;
-				struct machinestruct * machinelist = malloc(100*sizeof(machine));
-				int i = 0, j = 0;
+				int machinecount = 0, tasktime=0, totalinstances = 0;
+				//struct machinestruct * machinelist = malloc(100*sizeof(machine));
+				int i = 0, j = 0, k = 0, r = 0;
 				while(getline(&buffer, &bufsize, fptask)>0) {
 					sscanf(buffer, "%s %d%n", m, &machinecount, &bytesnow);
 					//printf("Pre Sscanf output: %s %d\n", m, machinecount);
-				  strcpy(machinelist[i].name, m);
-					machinelist[i].instances = machinecount;
+				  strcpy(machinenames[i], m);
+					strcpy(sem, "/"); strcat(sem, m); strcpy(semnames[i], sem);
+					machineinstances[i] = machinecount;
 					bytesread = bytesnow;	
-					while((charsread = sscanf(buffer+bytesread, "%s %d%n", s, &timereq, &bytesnow))>0){ 
+					while((charsread = sscanf(buffer+bytesread, "%s %d%n", s, &tasktime, &bytesnow))>0){ 
 								//printf("Sscanf output: %s %d\n", s, timereq);
-								//printf("%s ", s);
+								//printf("J: %d \n", j);
+								strcpy(tasks[j], s);
+								timereq[j] = 3;
 								bytesread+=bytesnow;
 								j++;
 					} i++;
 				}
-				for(i=0;i<4;i++) ;
-				//printf("Machines: %s %d\n", machinelist[i].name, machinelist[i].instances);
-				return machinelist;
+				for(j=0;j<i;j++) (*numinstances)++;
+				return *numinstances;
 }
 
 task* gettasklist(FILE *fptask) {
@@ -155,7 +168,7 @@ task* gettasklist(FILE *fptask) {
 	return tasklist;
 }
 
-int listjobs(FILE *fpjob, job* joblist[], int qinfo[]) {
+int listjobs(FILE *fpjob, job* joblist[], int qinfo[], char **machinenames) {
 				char *buffer = NULL;
 				size_t bufsize = 0;
 				char s[1000];
@@ -176,7 +189,7 @@ int listjobs(FILE *fpjob, job* joblist[], int qinfo[]) {
 					j = 0;	
 					sscanf(buffer+bytesread, "%s%n", s, &bytesnow);
 					targetmachine = strtok(s,":");
-					queuenum = getqueuenum(targetmachine);
+					queuenum = getqueuenum(targetmachine, machinenames);
 					//printf("Queuenum for targetmachine %s: %d\n", targetmachine, queuenum);
 					while((charsread = sscanf(buffer+bytesread, "%s%n", s, &bytesnow))>0){ 
 								strcpy(joblist[queuenum][rear[queuenum]].actlist[j],s);
