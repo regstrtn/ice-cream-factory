@@ -31,7 +31,7 @@ char semnames[100][100];
 int timereq[100];
 char tasks[100][100];
 int jobsdone = 0;
-int jobstoperform = 12;
+int jobstoperform = 11;
 
 void sighandler(int sig_num) {
 	int i = 0;
@@ -67,7 +67,7 @@ int populateq(job** qlist, int qinfo[]) {
 int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, int qinfo_child[],  char *machinename, job* partialq) {
 	signal(SIGINT, sighandler);
 	int j = getqueuenum(machinename);
-	*(statusvar+j) = 0; 
+	*(statusvar+j) = 0;
 	int i = 0;
 	int qempty = 1;
 	int * sem_q = sem_open(sem_name, 0);
@@ -81,11 +81,14 @@ int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, in
 		}
 		else {
 		job currjob = popq(job_child, &qinfo_child[j], &qinfo_child[nummachines+1+j]);
-		printf("%s %s:%s %d tasknum: %d\n", currjob.name, machinename, currjob.taskorder[currjob.currenttasknum], getpid(),currjob.currenttasknum);
+		printf("%s %s:%s %d", currjob.name, machinename, currjob.taskorder[currjob.currenttasknum], getpid());
 		usleep(100*1000);
 		currjob.currenttasknum++;
+		if(currjob.currenttasknum==currjob.totaltasks) printf(" %d Finished\n", currjob.totaltasks-currjob.currenttasknum);
+		else printf(" %d Waiting \n",currjob.totaltasks-currjob.currenttasknum);
 		insertq(partialq, currjob, &qinfo_child[nummachines], &qinfo_child[2*nummachines+1]);
-		*(statusvar+j)=1;
+		statusvar[j] = statusvar[j]+1;
+		//*(statusvar+j)++;
 		//printf(" Exited critical section\n");
 		fflush(NULL);
 		sem_post(sem_q);
@@ -116,11 +119,12 @@ int pollchildren(job* qlist[], int *statusarr, int instance, int qinfo[], job* p
 				else {
 								finish = 1; finishedjobs++;
 				}
+				statusarr[i] = statusarr[i]-1;
+				//*(statusarr+i)--;
 			}
-			*(statusarr+i) = 0;
 		} j++; //if(j>10) break; if(finish ==1 ) break;
 			usleep(1000*100);
-			printf("Total jobs: %d finished: %d tasksdone\n", totaljobs, finishedjobs);
+			//printf("Total jobs: %d finished: %d tasksdone: %d\n", totaljobs, finishedjobs, tasksdone);
 	}
 	return 0;
 }
