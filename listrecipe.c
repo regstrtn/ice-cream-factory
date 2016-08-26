@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/wait.h>
-#define QLEN 100
+#define QLEN 500
 
 /******************************************************************
  * Filename: 
@@ -77,7 +77,7 @@ int getnummachines(char *taskfile) {
 //int rear[4] = {0};
 
 int isempty(int *front, int *rear) {
-	if(*rear >= QLEN) return 1;
+	if((*front)%QLEN == (*rear+1)%QLEN) return 1;
 	if(*front == *rear) return 1;
 	else return 0;
 }
@@ -98,20 +98,20 @@ void printq(job *jq, int front, int rear) {
 void insertq(job *jq, job a, int *front, int *rear) {
 	int i;
   //printf("Insertq called. Parameters: %d %d %d. ", *front, *rear, QLEN);
-	if(*rear >= QLEN-1) printf("Queue overflow\n");
+	if((*front)%QLEN == (*rear + 1)%QLEN) printf("Queue overflow(rear)\n");
 	else {
 		jq[*rear] = a;
-		((*rear)++)%QLEN;
+		*rear = (*rear + 1)%QLEN;
 	}
 }
 
 job popq(job *jq, int *front, int *rear) {
  int i = *front;
  job element;
- if(*front>=*rear) printf("Queue empty\n");
+ if(*front==*rear) printf("Queue empty (front)\n");
  else {
 	 	element = jq[*front];
-		((*front)++)%QLEN;
+		*front = (*front + 1)%QLEN;
 		//printf("Popped: %s\n", element.name);
 		//printf("Front: %d Rear: %d\n", *front, *rear);
 		return element;
@@ -186,7 +186,7 @@ task* gettasklist(FILE *fptask) {
 	return tasklist;
 }
 
-int listjobs(FILE *fpjob, job* joblist[], int qinfo[]) {
+int listjobs(FILE *fpjob, job* joblist[], int qinfo[], int jobstoperform) {
 				char *buffer = NULL;
 				size_t bufsize = 0;
 				char s[1000];
@@ -205,10 +205,14 @@ int listjobs(FILE *fpjob, job* joblist[], int qinfo[]) {
 				int totaljobs = 0;
 				//job *joblist = (job*)malloc(100*sizeof(job));
 				int i = 0, j = 0;
+				printf("Total jobs to be performed: %d\n", jobstoperform);
+				while(jobstoperform>0) {
+								fseek(fpjob, 0, SEEK_SET);
 				while(getline(&buffer, &bufsize, fpjob)>0) {
 					totaljobs++;
 					sscanf(buffer, "%s%n", jobname, &bytesnow);	
-				  //strcpy(joblistqueuenum[i].name, s);
+				  printf("Jobname: %s\n", jobname);
+					//strcpy(joblistqueuenum[i].name, s);
 					bytesread = bytesnow;
 					j = 0;	
 					sscanf(buffer+bytesread, "%s%n", s, &bytesnow);
@@ -233,11 +237,15 @@ int listjobs(FILE *fpjob, job* joblist[], int qinfo[]) {
 					rear[queuenum] = rear[queuenum]+1;
 					//if(i>3) break;
 					//Error: I should not be incremented every time, fix this.
+					jobstoperform--; if(jobstoperform<=0) break;
+					printf("Jobs Read: %d Left: %d\n", totaljobs, jobstoperform);
+				}
 				}
 				for(i=0;i<nummachines;i++) {
 					qinfo[i+1+nummachines] = rear[i];
-					printf("Rear queue: %d\n", qinfo[i+1+nummachines]);
+					printf("Rear queue: %d Totaljobs to perform: %d\n", qinfo[i+1+nummachines], totaljobs);
 				}
+			//	exit(0);
 			return totaljobs;	
 				//printf("Jobnames: %s Activity list: %s Totaltasks: %d Thirdtask: %s\n", joblist[i].name, joblist[i].actlist[2], joblist[i].totaltasks, joblist[i].actremain[2]);
 	//return joblist;

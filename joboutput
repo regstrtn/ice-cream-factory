@@ -1,0 +1,67 @@
+Machines: 5 Instances: 12 Tasks: 18
+0 Machine: boil Semaphore: /boil Instances: 2
+1 Machine: wrap Semaphore: /wrap Instances: 3
+2 Machine: mix Semaphore: /mix Instances: 2
+3 Machine: freeze Semaphore: /freeze Instances: 3
+4 Machine: sell Semaphore: /sell Instances: 2
+Task: boilmilk7min Timereq: 7
+Task: heating Timereq: 2
+Task: boilwater Timereq: 10
+Task: boilmilk2min Timereq: 2
+Task: boilsomething Timereq: 10
+Task: wrapbar Timereq: 5
+Task: wrapcup Timereq: 20
+Task: vanilla Timereq: 5
+Task: butter Timereq: 20
+Task: chocolatepowder Timereq: 11
+Task: cream Timereq: 25
+Task: strawberry Timereq: 20
+Task: mixsomething Timereq: 10
+Task: medium Timereq: 6
+Task: extreme Timereq: 50
+Task: slow Timereq: 2
+Task: freezesomething Timereq: 10
+Task: sellsomething Timereq: 10
+Rear queue: 5
+Rear queue: 0
+Rear queue: 0
+Rear queue: 0
+Rear queue: 0
+Front Rear: 0 0Front Rear: 0 5Front Rear: 0 0Front Rear: 0 0Front Rear: 0 0Machine: boil executing job: vanillaice taskv: boilmilk7min task: 0
+Machine: boil executing job: chocolatebar taskv: boilmilk7min task: 0
+Machine: boil executing job: delight-strawberry taskv: boilmilk2min task: 0
+Machine: boil executing job: delight-strawberry-cup taskv: boilmilk2min task: 0
+Machine: boil executing job: butterscotch taskv: boilsomething task: 0
+Machine: mix executing job: vanillaice taskv: vanilla task: 1
+Machine: mix executing job: chocolatebar taskv: chocolatepowder task: 1
+Machine: mix executing job: delight-strawberry taskv: strawberry task: 1
+Machine: mix executing job: delight-strawberry-cup taskv: strawberry task: 1
+Machine: mix executing job: butterscotch taskv: mixsomething task: 1
+Machine: boil executing job: vanillaice taskv: heating task: 2
+Machine: boil executing job: chocolatebar taskv: heating task: 2
+Machine: boil executing job: delight-strawberry taskv: heating task: 2
+Machine: boil executing job: delight-strawberry-cup taskv: heating task: 2
+Machine: wrap executing job: vanillaice taskv: wrapcup task: 3
+Machine: freeze executing job: butterscotch taskv: freezesomething task: 2
+Machine: freeze executing job: chocolatebar taskv: extreme task: 3
+Machine: freeze executing job: vanillaice taskv: slow task: 4
+Machine: mix executing job: delight-strawberry taskv: cream task: 3
+Machine: mix executing job: delight-strawberry-cup taskv: cream task: 3
+Machine: sell executing job: butterscotch taskv: sellsomething task: 3
+Machine: wrap executing job: chocolatebar taskv: wrapbar task: 4
+Machine: freeze executing job: delight-strawberry taskv: extreme task: 4
+Machine: freeze executing job: delight-strawberry-cup taskv: extreme task: 4
+Machine: wrap executing job: delight-strawberry taskv: wrapbar task: 5
+Machine: wrap executing job: delight-strawberry-cup taskv: wrapcup task: 5
+SIGINT handler calledJobs done: 5
+SIGINT handler calledJobs done: 2
+SIGINT handler calledJobs done: 4
+SIGINT handler calledJobs done: 1
+SIGINT handler calledJobs done: 4
+SIGINT handler calledJobs done: 1
+SIGINT handler calledJobs done: 1
+SIGINT handler calledJobs done: 0
+SIGINT handler calledJobs done: 1
+SIGINT handler calledJobs done: 2
+SIGINT handler calledJobs done: 3
+SIGINT handler calledJobs done: 2

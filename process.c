@@ -31,11 +31,11 @@ char semnames[100][100];
 int timereq[100];
 char tasks[100][100];
 int jobsdone = 0;
+int jobstoperform = 12;
 
 void sighandler(int sig_num) {
 	int i = 0;
-	printf("SIGINT handler called");
-	printf("Jobs done: %d\n", jobsdone);
+	printf("Jobs done by pid %d : %d\n", getpid(), jobsdone);
 	for(i=0;i<nummachines;i++) {
 		sem_unlink(semnames[i]);
 		//perror("Signal handler. sem_unlink: ");
@@ -53,7 +53,7 @@ int populateq(job** qlist, int qinfo[]) {
 	}
 	//qlist[0].totaltasks = 100;
 	// strcpy(qlist->name, "dafuq");
-	totaljobs = listjobs(fpjob, qlist, qinfo);
+	totaljobs = listjobs(fpjob, qlist, qinfo, jobstoperform);
 	for(i=0;i<5;i++) {
 		printf("Front Rear: %d %d", qinfo[i], qinfo[5+i]);
 	}
@@ -81,7 +81,7 @@ int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, in
 		}
 		else {
 		job currjob = popq(job_child, &qinfo_child[j], &qinfo_child[nummachines+1+j]);
-		printf("Machine: %s executing job: %s taskv: %s task: %d\n", machinename, currjob.name, currjob.taskorder[currjob.currenttasknum], currjob.currenttasknum);
+		printf("%s %s:%s %d tasknum: %d\n", currjob.name, machinename, currjob.taskorder[currjob.currenttasknum], getpid(),currjob.currenttasknum);
 		usleep(100*1000);
 		currjob.currenttasknum++;
 		insertq(partialq, currjob, &qinfo_child[nummachines], &qinfo_child[2*nummachines+1]);
@@ -100,10 +100,11 @@ int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, in
 int pollchildren(job* qlist[], int *statusarr, int instance, int qinfo[], job* partialq, sem_t *partial_sem, int totaljobs){
 	job partialjob;
 	int finishedjobs = 0;
-	int i = 0, j = 0, qnum, finish = 0;
+	int i = 0, j = 0, qnum, finish = 0, tasksdone = 0;
 	while(finishedjobs<totaljobs) {
 		for(i=0;i<nummachines;i++) {
 			if(*(statusarr+i)>=1) {
+				tasksdone++;
 				sem_wait(partial_sem);
 				partialjob = popq(partialq, &qinfo[nummachines], &qinfo[2*nummachines+1]);
 				sem_post(partial_sem);
@@ -119,7 +120,7 @@ int pollchildren(job* qlist[], int *statusarr, int instance, int qinfo[], job* p
 			*(statusarr+i) = 0;
 		} j++; //if(j>10) break; if(finish ==1 ) break;
 			usleep(1000*100);
-			//printf("Total jobs: %d finished: %d\n", totaljobs, finishedjobs);
+			printf("Total jobs: %d finished: %d tasksdone\n", totaljobs, finishedjobs);
 	}
 	return 0;
 }
