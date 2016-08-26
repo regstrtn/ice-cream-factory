@@ -16,6 +16,17 @@
  *
  * ****************************************************************/
 
+//Declare global variables
+
+extern char machinenames[100][100];
+extern int nummachines; //Later have this picked up programmatically
+extern int machineinstances[100];
+extern int numinstances;
+extern int numtasks;
+extern char semnames[100][100];
+extern int timereq[100];
+extern char tasks[100][100];
+
 typedef struct jobstruct {
 	char name[250];
 	char actlist[100][250];
@@ -61,7 +72,6 @@ int getnummachines(char *taskfile) {
  return machines;
 }
 
-extern char *machinenames[];
 //char* machinenames[4] = {"boil", "mix", "wrap", "freeze"};
 //int front[4] = {0};
 //int rear[4] = {0};
@@ -72,7 +82,7 @@ int isempty(int *front, int *rear) {
 	else return 0;
 }
 
-int getqueuenum(char *targetmachine, char **machinenames) {
+int getqueuenum(char *targetmachine) {
 	int i = 0;
 	for(i=0;i<4;i++) {
 		if(strcmp(targetmachine, machinenames[i])==0) return i;
@@ -91,7 +101,7 @@ void insertq(job *jq, job a, int *front, int *rear) {
 	if(*rear >= QLEN-1) printf("Queue overflow\n");
 	else {
 		jq[*rear] = a;
-		(*rear)++;
+		((*rear)++)%QLEN;
 	}
 }
 
@@ -101,15 +111,21 @@ job popq(job *jq, int *front, int *rear) {
  if(*front>=*rear) printf("Queue empty\n");
  else {
 	 	element = jq[*front];
-		(*front)++;
+		((*front)++)%QLEN;
 		//printf("Popped: %s\n", element.name);
 		//printf("Front: %d Rear: %d\n", *front, *rear);
 		return element;
  } 
 }
 
+int gettasktime(char *taskname) {
+	int i = 0, j = 0;
+	for(i=0;i<numtasks;i++) {
+		if(strcmp(taskname, tasks[i])==0) return timereq[i];
+	}
+}
 
-int getmachinelist(char *taskfile, char machinenames[][100], int machineinstances[], char tasks[][100], int timereq[], int *numinstances, char semnames[][100]) {
+int getmachinelist(char *taskfile, char machinenames[][100], int machineinstances[], char tasks[][100], int timereq[], int *numtasks, char semnames[][100]) {
 				FILE *fptask = fopen(taskfile, "r");
 				fseek(fptask, 0, SEEK_SET);
 				char *buffer = NULL;
@@ -118,7 +134,7 @@ int getmachinelist(char *taskfile, char machinenames[][100], int machineinstance
 				int bytesread = 0, bytesnow, charsread = 0;
 				int machinecount = 0, tasktime=0, totalinstances = 0;
 				//struct machinestruct * machinelist = malloc(100*sizeof(machine));
-				int i = 0, j = 0, k = 0, r = 0;
+				int i = 0, j = 0, k = 0, r = 0, inst = 0;
 				while(getline(&buffer, &bufsize, fptask)>0) {
 					sscanf(buffer, "%s %d%n", m, &machinecount, &bytesnow);
 					//printf("Pre Sscanf output: %s %d\n", m, machinecount);
@@ -130,13 +146,15 @@ int getmachinelist(char *taskfile, char machinenames[][100], int machineinstance
 								//printf("Sscanf output: %s %d\n", s, timereq);
 								//printf("J: %d \n", j);
 								strcpy(tasks[j], s);
-								timereq[j] = 3;
+								timereq[j] = tasktime;
 								bytesread+=bytesnow;
 								j++;
 					} i++;
 				}
-				for(j=0;j<i;j++) (*numinstances)++;
-				return *numinstances;
+			  *numtasks = j;
+			  for(j=0;j<i;j++) inst+=machineinstances[j]; 
+
+				return inst;
 }
 
 task* gettasklist(FILE *fptask) {
@@ -168,15 +186,21 @@ task* gettasklist(FILE *fptask) {
 	return tasklist;
 }
 
-int listjobs(FILE *fpjob, job* joblist[], int qinfo[], char **machinenames) {
+int listjobs(FILE *fpjob, job* joblist[], int qinfo[]) {
 				char *buffer = NULL;
 				size_t bufsize = 0;
 				char s[1000];
 				char jobname[1000];
 				char *targetmachine, *taskv;
 				int queuenum;
-			  int front[5] = {0};
-				int rear[5] = {0};
+			  int front[nummachines+1];
+				int rear[nummachines+1];
+				int k = 0;
+				//For loop below is required because variable sized objects cannot be initialised. 
+				for(k=0;k<nummachines+1;k++) {
+					front[k] = 0;
+					rear[k] = 0;
+				}
 				int bytesread = 0, bytesnow, charsread = 0;
 				int totaljobs = 0;
 				//job *joblist = (job*)malloc(100*sizeof(job));
@@ -189,7 +213,7 @@ int listjobs(FILE *fpjob, job* joblist[], int qinfo[], char **machinenames) {
 					j = 0;	
 					sscanf(buffer+bytesread, "%s%n", s, &bytesnow);
 					targetmachine = strtok(s,":");
-					queuenum = getqueuenum(targetmachine, machinenames);
+					queuenum = getqueuenum(targetmachine);
 					//printf("Queuenum for targetmachine %s: %d\n", targetmachine, queuenum);
 					while((charsread = sscanf(buffer+bytesread, "%s%n", s, &bytesnow))>0){ 
 								strcpy(joblist[queuenum][rear[queuenum]].actlist[j],s);
@@ -210,12 +234,9 @@ int listjobs(FILE *fpjob, job* joblist[], int qinfo[], char **machinenames) {
 					//if(i>3) break;
 					//Error: I should not be incremented every time, fix this.
 				}
-				for(i=0;i<5;i++) {
-					qinfo[i+5] = rear[i];
-					printf("Rear queue: %d\n", qinfo[i+5]);
-				}
-				for(i=0;i<4;i++){
-					//printq(joblist[i], 0, 3);
+				for(i=0;i<nummachines;i++) {
+					qinfo[i+1+nummachines] = rear[i];
+					printf("Rear queue: %d\n", qinfo[i+1+nummachines]);
 				}
 			return totaljobs;	
 				//printf("Jobnames: %s Activity list: %s Totaltasks: %d Thirdtask: %s\n", joblist[i].name, joblist[i].actlist[2], joblist[i].totaltasks, joblist[i].actremain[2]);

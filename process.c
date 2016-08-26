@@ -21,15 +21,31 @@
  *
  * ****************************************************************/
 
-//char *machinenames[] = {"boil", "mix", "wrap", "freeze"};
-//int nummachines = 4; //Later have this picked up programmatically
-//int machineinstances[4] = {2, 3, 2, 3};
-//int numinstances = 10;
-//char *semnames[] = {"/boil", "/mix", "/wrap", "/freeze"};
 
-/*
+char machinenames[100][100];
+int nummachines = 0; //Later have this picked up programmatically
+int machineinstances[100];
+int numinstances = 0;
+int numtasks = 0;
+char semnames[100][100];
+int timereq[100];
+char tasks[100][100];
+int jobsdone = 0;
+
+void sighandler(int sig_num) {
+	int i = 0;
+	printf("SIGINT handler called");
+	printf("Jobs done: %d\n", jobsdone);
+	for(i=0;i<nummachines;i++) {
+		sem_unlink(semnames[i]);
+		perror("Signal handler. sem_unlink: ");
+	}
+	sem_unlink("/partial");
+	exit(0);
+}
+
 int populateq(job** qlist, int qinfo[]) {
-	FILE *fpjob = fopen("job2.info", "r");
+	FILE *fpjob = fopen("job3.info", "r");
   int i = 0;
 	int totaljobs = 0;
 	for(i=0;i<10;i++) {
@@ -49,33 +65,31 @@ int populateq(job** qlist, int qinfo[]) {
 
 
 int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, int qinfo_child[],  char *machinename, job* partialq) {
+	signal(SIGINT, sighandler);
 	int j = getqueuenum(machinename);
 	*(statusvar+j) = 0; 
-	//lr_init();
 	int i = 0;
 	int qempty = 1;
 	int * sem_q = sem_open(sem_name, 0);
 	int *semp = sem_open("/partial", 0);
 	while(1) {
 		sem_wait(sem_q);
-		//printf("Instance: %d. Machine: %s. Entered critical section\n", instance, machinename);
-		//for(i=0;i<10;i++) printf("Qinfo %d: %d\n", i, qinfo_child[i]);
-	  if((qempty = isempty(&qinfo_child[j], &qinfo_child[5+j])==1)) { 
-										//printf("Function reaches here. Machine: %s. Rear: %d. Isempty: %d\n", machinename, qinfo_child[5+j], isempty(&qinfo_child[j], &qinfo_child[j+5]));
+	  if((qempty = isempty(&qinfo_child[j], &qinfo_child[nummachines+1+j])==1)) { 
 										sem_post(sem_q);
 										sleep(1);
 										continue;	
 		}
 		else {
-		job currjob = popq(job_child, &qinfo_child[j], &qinfo_child[5+j]);
+		job currjob = popq(job_child, &qinfo_child[j], &qinfo_child[nummachines+1+j]);
 		printf("Machine: %s executing job: %s taskv: %s task: %d\n", machinename, currjob.name, currjob.taskorder[currjob.currenttasknum], currjob.currenttasknum);
 		usleep(100*1000);
 		currjob.currenttasknum++;
-		insertq(partialq, currjob, &qinfo_child[4], &qinfo_child[9]);
+		insertq(partialq, currjob, &qinfo_child[nummachines], &qinfo_child[2*nummachines+1]);
 		*(statusvar+j)=1;
 		//printf(" Exited critical section\n");
 		fflush(NULL);
 		sem_post(sem_q);
+		jobsdone++;
 	//	break;
 		}
 	}
@@ -89,13 +103,15 @@ int pollchildren(job* qlist[], int *statusarr, int instance, int qinfo[], job* p
 	while(finishedjobs<totaljobs) {
 		for(i=0;i<nummachines;i++) {
 			if(*(statusarr+i)>=1) {
-				//printf("From partial queue ");
 				sem_wait(partial_sem);
-				partialjob = popq(partialq, &qinfo[4], &qinfo[9]);
+				printf("From partial queue. Value of i: %d ", i); fflush(NULL);
+				partialjob = popq(partialq, &qinfo[nummachines], &qinfo[2*nummachines+1]);
 				sem_post(partial_sem);
 			  qnum = getqueuenum(partialjob.machineorder[partialjob.currenttasknum]);
 				if(partialjob.currenttasknum < partialjob.totaltasks) {
-					insertq(qlist[qnum],partialjob, &qinfo[qnum], &qinfo[qnum+5]);
+					
+						printf("code did not reach here after printing i\n");
+						insertq(qlist[qnum],partialjob, &qinfo[qnum], &qinfo[qnum+nummachines+1]);
 				}
 				else {
 								finish = 1; finishedjobs++;
@@ -116,7 +132,7 @@ int buildjobqs() {
 	job *qlist[nummachines];
 	job *job_child, *job_parent;
 	task *tasklist;
-	int pid[10];
+	int pid[numinstances];
 	int totaljobs = 0;
 	//Variables for partially completed queue
 	int partial_id;
@@ -129,7 +145,7 @@ int buildjobqs() {
 	//int sem_q[nummachines];
 	//Get semaphores
 	//for(i=0;i<nummachines;i++) {
-	int*	sem_q[4];
+	int*	sem_q[nummachines];
   sem_unlink("/boil"); sem_unlink("/mix"); sem_unlink("/wrap"); sem_unlink("/freeze"); sem_unlink("/partial");
 	for(i=0;i<nummachines;i++) {
 				sem_q[i] =  sem_open(semnames[i], O_CREAT|O_EXCL, 0644, 1);
@@ -138,9 +154,9 @@ int buildjobqs() {
 	}
 	//}	
 	//Allocate shared memory
-	sh_status = shmget(IPC_PRIVATE, numinstances*sizeof(int), 0777|IPC_CREAT); //Get memory for polling array
+	sh_status = shmget(IPC_PRIVATE, nummachines*sizeof(int), 0777|IPC_CREAT); //Get memory for polling array
 	statusarr = (int*)shmat(sh_status, 0,0); //Attach array that will be polled
-	sh_qinfo = shmget(IPC_PRIVATE, 10*sizeof(int), 0777|IPC_CREAT); //Required for front and rear of queues
+	sh_qinfo = shmget(IPC_PRIVATE, (2*nummachines+2)*sizeof(int), 0777|IPC_CREAT); //Required for front and rear of queues
 	qinfo = (int*)shmat(sh_qinfo, 0, 0);
 	i = 0;
 	for(i=0;i<nummachines;i++) {	
@@ -163,15 +179,17 @@ int buildjobqs() {
 			  statusvar = (int*)shmat(sh_status, 0, 0);
 				qinfo_child = (int*)shmat(sh_qinfo, 0, 0);
 				partial_child = (job *)shmat(partial_id, 0, 0);
-				//printf("Can i access qinfo from here:%d ", qinfo_child[instance]);
+				//printf("Value of instance passed to child: %d\n", instance);
 				startmachine(job_child, statusvar, instance, semnames[i], qinfo_child, machinenames[i], partial_child);	
-			} instance++;
-		}
+			} 
+			//printf("Machine: %s PID: %d\n", machinenames[i], pid[instance]);
+			instance++;
+		} 
 	}	
 		i = 0;
-		printf("Parent here\n");
 		pollchildren(qlist, statusarr, instance, qinfo, partial_parent, partial_sem, totaljobs);
-		for(i=0;i<instance;i++)  kill(pid[i], SIGKILL);//kill child process
+		//End everything gracefully after jobs done
+		for(i=0;i<instance;i++)  kill(pid[i], SIGINT);//kill child process
 		for(i=0;i<nummachines;i++)	{
 			shmctl(shmid[i], IPC_RMID, 0);
 			sem_unlink(semnames[i]);
@@ -181,30 +199,22 @@ int buildjobqs() {
 		shmctl(sh_qinfo, IPC_RMID, 0);
 }
 
-void sighandler(int sig_num) {
-	int i = 0;
-	printf("SIGINT handler called");
-	for(i=0;i<nummachines;i++) {
-		sem_unlink(semnames[i]);
-		perror("Signal handler. sem_unlink: ");
-	}
-	sem_unlink("/partial");
-	exit(0);
-}
-*/
+
 int main(int argc, char **argv){
  // signal(SIGINT, sighandler);
-	char *taskfile = "slave2.info";
-	int nummachines = getnummachines(taskfile);
-	char machinenames[nummachines][100];
-  char semnames[nummachines][100];
-	int machineinstances[nummachines];
-	int timereq[100];
-	char tasks[100][100];
-	int numinstances = 0;
-	int instances =  getmachinelist(taskfile, machinenames, machineinstances, tasks, timereq, &numinstances, semnames); 
-	printf("Instances from main: %s %s \n", tasks[0], timereq[0]); fflush(NULL);
-	unittest(nummachines, machinenames, machineinstances, tasks, timereq, instances-nummachines, semnames);
-	//buildjobqs();
+	char *taskfile = "slave3.info";
+	nummachines = getnummachines(taskfile);
+	char l_machinenames[nummachines][100];
+  char l_semnames[nummachines][100];
+	int l_machineinstances[nummachines];
+	int l_timereq[100];
+	char l_tasks[100][100];
+	int l_numtasks = 0;
+	int l_instances =  getmachinelist(taskfile, machinenames, machineinstances, tasks, timereq, &l_numtasks, semnames); 
+	numtasks = l_numtasks; //set global variables 
+	numinstances = l_instances;
+	unittest(nummachines, machinenames, machineinstances, tasks, timereq,numinstances, numtasks, semnames);
+	//setglobalvars(nummachines, machinenames, machineinstances, tasks, timereq, numtasks, semnames);
+	buildjobqs();
 	return 0;
 }
