@@ -38,7 +38,7 @@ void sighandler(int sig_num) {
 	printf("Jobs done: %d\n", jobsdone);
 	for(i=0;i<nummachines;i++) {
 		sem_unlink(semnames[i]);
-		perror("Signal handler. sem_unlink: ");
+		//perror("Signal handler. sem_unlink: ");
 	}
 	sem_unlink("/partial");
 	exit(0);
@@ -90,6 +90,7 @@ int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, in
 		fflush(NULL);
 		sem_post(sem_q);
 		jobsdone++;
+		usleep(rand()*100/RAND_MAX);
 	//	break;
 		}
 	}
@@ -104,13 +105,11 @@ int pollchildren(job* qlist[], int *statusarr, int instance, int qinfo[], job* p
 		for(i=0;i<nummachines;i++) {
 			if(*(statusarr+i)>=1) {
 				sem_wait(partial_sem);
-				printf("From partial queue. Value of i: %d ", i); fflush(NULL);
 				partialjob = popq(partialq, &qinfo[nummachines], &qinfo[2*nummachines+1]);
 				sem_post(partial_sem);
 			  qnum = getqueuenum(partialjob.machineorder[partialjob.currenttasknum]);
 				if(partialjob.currenttasknum < partialjob.totaltasks) {
 					
-						printf("code did not reach here after printing i\n");
 						insertq(qlist[qnum],partialjob, &qinfo[qnum], &qinfo[qnum+nummachines+1]);
 				}
 				else {

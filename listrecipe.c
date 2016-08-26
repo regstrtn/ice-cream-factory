@@ -84,7 +84,7 @@ int isempty(int *front, int *rear) {
 
 int getqueuenum(char *targetmachine) {
 	int i = 0;
-	for(i=0;i<4;i++) {
+	for(i=0;i<nummachines;i++) {
 		if(strcmp(targetmachine, machinenames[i])==0) return i;
 	}
 }
