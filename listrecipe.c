@@ -212,13 +212,13 @@ int listjobs(FILE *fpjob, job* joblist[], int qinfo[], int jobstoperform) {
 				int totaljobs = 0;
 				//job *joblist = (job*)malloc(100*sizeof(job));
 				int i = 0, j = 0;
-				printf("Total jobs to be performed: %d\n", jobstoperform);
+				//printf("Total jobs to be performed: %d\n", jobstoperform);
 				while(jobstoperform>0) {
 								fseek(fpjob, 0, SEEK_SET);
 				while(getline(&buffer, &bufsize, fpjob)>0) {
 					totaljobs++;
 					sscanf(buffer, "%s%n", jobname, &bytesnow);	
-				  printf("Jobname: %s ", jobname);
+				  //printf("Jobname: %s ", jobname);
 					//strcpy(joblistqueuenum[i].name, s);
 					bytesread = bytesnow;
 					j = 0;	
@@ -245,12 +245,12 @@ int listjobs(FILE *fpjob, job* joblist[], int qinfo[], int jobstoperform) {
 					//if(i>3) break;
 					//Error: I should not be incremented every time, fix this.
 					jobstoperform--; if(jobstoperform<=0) break;
-					printf("Jobs Read: %d Left: %d\n", totaljobs, jobstoperform);
+					//printf("Jobs Read: %d Left: %d\n", totaljobs, jobstoperform);
 				}
 				}
 				for(i=0;i<nummachines;i++) {
 					qinfo[i+1+nummachines] = rear[i];
-					printf("Rear queue: %d Totaljobs to perform: %d\n", qinfo[i+1+nummachines], totaljobs);
+					//printf("Rear queue: %d Totaljobs to perform: %d\n", qinfo[i+1+nummachines], totaljobs);
 				}
 			//	exit(0);
 			return totaljobs;	

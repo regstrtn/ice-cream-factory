@@ -15,15 +15,16 @@
 #include "unittest.c"
 
 /******************************************************************
- * Filename: 
+ * Filename: process.c 
  * Created by: Mohammad Luqman
  *
  *
  * ****************************************************************/
 
+//Declare global variables. Have main function fill these up from slave and job files
 
 char machinenames[100][100];
-int nummachines = 0; //Later have this picked up programmatically
+int nummachines = 0; 
 int machineinstances[100];
 int numinstances = 0;
 int numtasks = 0;
@@ -31,15 +32,17 @@ char semnames[100][100];
 int timereq[100];
 char tasks[100][100];
 int jobsdone = 0;
-int jobstoperform = 11;
+int jobstoperform = 0;
 int tasksdone[100] = {0};
+char taskfile[100], jobfile[100]; //Not really required to be global, just being lazy
 
+//Parent sends SIGINT to child processes. Before exiting, print out task summary of each child.
 void sighandler(int sig_num) {
 	int i = 0;
-	printf("PID:%d Jobs:%d ", getpid(), jobsdone);
+	printf("%d %d ", getpid(), jobsdone);
 	for(i=0;i<numtasks;i++) {
 		if(tasksdone[i]>0) {
-			printf("%s:%d ", tasks[i], tasksdone[i]);
+			printf("%s %d ", tasks[i], tasksdone[i]);
 		}
 	}
 	printf("\n");
@@ -51,18 +54,19 @@ void sighandler(int sig_num) {
 	exit(0);
 }
 
+//This function calls the listjobs function from listrecipe.c file and picks up all the jobs
 int populateq(job** qlist, int qinfo[]) {
-	FILE *fpjob = fopen("job3.info", "r");
+	FILE *fpjob = fopen(jobfile, "r");
   int i = 0;
 	int totaljobs = 0;
-	for(i=0;i<10;i++) {
+	for(i=0;i<2*nummachines+2;i++) {
 		qinfo[i] = 0;
 	}
 	//qlist[0].totaltasks = 100;
 	// strcpy(qlist->name, "dafuq");
 	totaljobs = listjobs(fpjob, qlist, qinfo, jobstoperform);
-	for(i=0;i<5;i++) {
-		printf("Front Rear: %d %d", qinfo[i], qinfo[5+i]);
+	for(i=0;i<nummachines+1;i++) {
+		//printf("Front Rear: %d %d", qinfo[i], qinfo[5+i]);
 	}
 	fflush(NULL);
 	return totaljobs;
@@ -70,7 +74,7 @@ int populateq(job** qlist, int qinfo[]) {
 	//printf("First job name: %d\n", qlist[0].totaltasks );
 }
 
-
+//Each child process takes its machine name as argument and performs the tasks required
 int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, int qinfo_child[],  char *machinename, job* partialq) {
 	signal(SIGINT, sighandler);
 	int j = getqueuenum(machinename);
@@ -80,7 +84,8 @@ int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, in
 	int * sem_q = sem_open(sem_name, 0);
 	int *semp = sem_open("/partial", 0);
 	int tasktype = 0;
-	while(1) {
+	printf("%s %d\n", machinename, getpid());
+	while(1) {     //Keep waiting till parent sends SIGINT
 		sem_wait(sem_q);
 	  if((qempty = isempty(&qinfo_child[j], &qinfo_child[nummachines+1+j])==1)) { 
 										sem_post(sem_q);
@@ -88,28 +93,29 @@ int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, in
 										continue;	
 		}
 		else {
-		job currjob = popq(job_child, &qinfo_child[j], &qinfo_child[nummachines+1+j]);
-		printf("%s %s:%s %d", currjob.name, machinename, currjob.taskorder[currjob.currenttasknum], getpid());
-		usleep(100*1000);
-		tasktype = gettasknum(currjob.taskorder[currjob.currenttasknum]);
-		tasksdone[tasktype]++;
-		currjob.currenttasknum++;
-		if(currjob.currenttasknum==currjob.totaltasks) printf(" %d Finished\n", currjob.totaltasks-currjob.currenttasknum);
-		else printf(" %d Waiting \n",currjob.totaltasks-currjob.currenttasknum);
-		insertq(partialq, currjob, &qinfo_child[nummachines], &qinfo_child[2*nummachines+1]);
-		statusvar[j] = statusvar[j]+1;
-		//*(statusvar+j)++;
-		//printf(" Exited critical section\n");
-		fflush(NULL);
-		sem_post(sem_q);
-		jobsdone++;
-		usleep(rand()*100/RAND_MAX);
+			job currjob = popq(job_child, &qinfo_child[j], &qinfo_child[nummachines+1+j]); //Pop job from the front of the queue
+			printf("%s %s:%s %d", currjob.name, machinename, currjob.taskorder[currjob.currenttasknum], getpid());
+			tasktype = gettasknum(currjob.taskorder[currjob.currenttasknum]);
+			usleep(timereq[tasktype]*1000); //Sleep for required time
+			tasksdone[tasktype]++;
+			currjob.currenttasknum++;
+			if(currjob.currenttasknum==currjob.totaltasks) printf(" %d finished\n", currjob.totaltasks-currjob.currenttasknum);
+			else printf(" %d waiting \n",currjob.totaltasks-currjob.currenttasknum);
+			insertq(partialq, currjob, &qinfo_child[nummachines], &qinfo_child[2*nummachines+1]);
+			statusvar[j] = statusvar[j]+1;
+			//*(statusvar+j)++;
+			//printf(" Exited critical section\n");
+			fflush(NULL);
+			sem_post(sem_q);
+			jobsdone++;
+			usleep(rand()*100/RAND_MAX); //For uniform scheduling, make child sleep for a random time after completion
 	//	break;
 		}
 	}
 	exit(0);
 }
 
+//Check status of each machine periodically for completed tasks
 int pollchildren(job* qlist[], int *statusarr, int instance, int qinfo[], job* partialq, sem_t *partial_sem, int totaljobs){
 	job partialjob;
 	int finishedjobs = 0;
@@ -194,6 +200,7 @@ int buildjobqs() {
 				qinfo_child = (int*)shmat(sh_qinfo, 0, 0);
 				partial_child = (job *)shmat(partial_id, 0, 0);
 				//printf("Value of instance passed to child: %d\n", instance);
+				//Start child process with the required parameters
 				startmachine(job_child, statusvar, instance, semnames[i], qinfo_child, machinenames[i], partial_child);	
 			} 
 			//printf("Machine: %s PID: %d\n", machinenames[i], pid[instance]);
@@ -217,7 +224,9 @@ int buildjobqs() {
 
 int main(int argc, char **argv){
  // signal(SIGINT, sighandler);
-	char *taskfile = "slave3.info";
+  strcpy(taskfile, argv[1]);
+	strcpy(jobfile, argv[2]);
+	jobstoperform = atoi(argv[3]);
 	nummachines = getnummachines(taskfile);
 	char l_machinenames[nummachines][100];
   char l_semnames[nummachines][100];
