@@ -17,7 +17,8 @@
 /******************************************************************
  * Filename: process.c 
  * Created by: Mohammad Luqman
- *
+ * This is the master file which creates all sorts of delicious ice-cream flavors.
+ * A randomized approach has been used to implement scheduling. 
  *
  * ****************************************************************/
 

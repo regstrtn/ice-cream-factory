@@ -10,14 +10,15 @@
 #define QLEN 500
 
 /******************************************************************
- * Filename: 
+ * Filename: listrecipe.c 
  * Created by: Mohammad Luqman
  *
  *
  * ****************************************************************/
 
-//Declare global variables
+//Most functions in this file are not used anymore, but still, don't delete anything. 
 
+//Mention global variables that were defined in process.c file
 extern char machinenames[100][100];
 extern int nummachines; //Later have this picked up programmatically
 extern int machineinstances[100];
@@ -132,6 +133,7 @@ int gettasktime(char *taskname) {
 	}
 }
 
+//Read slave.info file and store machine details, tasknames, and time requirements of each task. Also define semaphore names for each machine. 
 int getmachinelist(char *taskfile, char machinenames[][100], int machineinstances[], char tasks[][100], int timereq[], int *numtasks, char semnames[][100]) {
 				FILE *fptask = fopen(taskfile, "r");
 				fseek(fptask, 0, SEEK_SET);
@@ -146,10 +148,11 @@ int getmachinelist(char *taskfile, char machinenames[][100], int machineinstance
 					sscanf(buffer, "%s %d%n", m, &machinecount, &bytesnow);
 					//printf("Pre Sscanf output: %s %d\n", m, machinecount);
 				  strcpy(machinenames[i], m);
-					strcpy(sem, "/"); strcat(sem, m); strcpy(semnames[i], sem);
+					strcpy(sem, "/"); strcat(sem, m); strcpy(semnames[i], sem); //Semaphore name needs to start with forward slash
 					machineinstances[i] = machinecount;
 					bytesread = bytesnow;	
-					while((charsread = sscanf(buffer+bytesread, "%s %d%n", s, &tasktime, &bytesnow))>0){ 
+					//Need to tell sscanf where to start reading the buffer from. %n at the end stores bytes read in &bytesnow
+					while((charsread = sscanf(buffer+bytesread, "%s %d%n", s, &tasktime, &bytesnow))>0){  
 								//printf("Sscanf output: %s %d\n", s, timereq);
 								//printf("J: %d \n", j);
 								strcpy(tasks[j], s);
@@ -158,12 +161,12 @@ int getmachinelist(char *taskfile, char machinenames[][100], int machineinstance
 								j++;
 					} i++;
 				}
-			  *numtasks = j;
+			  *numtasks = j; //Number of task variants
 			  for(j=0;j<i;j++) inst+=machineinstances[j]; 
-
-				return inst;
+				return inst; //Return total number of instances of all machines put together
 }
 
+//I think this function never gets called, but I am not sure. 
 task* gettasklist(FILE *fptask) {
 				fseek(fptask, 0, SEEK_SET);
 				char *buffer = NULL;
@@ -193,6 +196,7 @@ task* gettasklist(FILE *fptask) {
 	return tasklist;
 }
 
+//Read job.info file and insert each job in appropriate queue
 int listjobs(FILE *fpjob, job* joblist[], int qinfo[], int jobstoperform) {
 				char *buffer = NULL;
 				size_t bufsize = 0;
