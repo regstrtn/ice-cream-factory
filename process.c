@@ -102,6 +102,7 @@ int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, in
 			currjob.currenttasknum++;
 			if(currjob.currenttasknum==currjob.totaltasks) printf(" %d finished\n", currjob.totaltasks-currjob.currenttasknum);
 			else printf(" %d waiting \n",currjob.totaltasks-currjob.currenttasknum);
+			while(isfull(&qinfo_child[nummachines], &qinfo_child[2*nummachines+1])) usleep(100*1000);
 			insertq(partialq, currjob, &qinfo_child[nummachines], &qinfo_child[2*nummachines+1]);
 			statusvar[j] = statusvar[j]+1;
 			//*(statusvar+j)++;
@@ -131,6 +132,7 @@ int pollchildren(job* qlist[], int *statusarr, int instance, int qinfo[], job* p
 			  qnum = getqueuenum(partialjob.machineorder[partialjob.currenttasknum]);
 				if(partialjob.currenttasknum < partialjob.totaltasks) {
 					
+						while(isfull(&qinfo[qnum], &qinfo[qnum+nummachines+1])) usleep(100*1000);
 						insertq(qlist[qnum],partialjob, &qinfo[qnum], &qinfo[qnum+nummachines+1]);
 				}
 				else {

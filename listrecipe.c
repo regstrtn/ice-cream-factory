@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/wait.h>
-#define QLEN 500
+#define QLEN 1000
 
 /******************************************************************
  * Filename: listrecipe.c 
@@ -78,7 +78,6 @@ int getnummachines(char *taskfile) {
 //int rear[4] = {0};
 
 int isempty(int *front, int *rear) {
-	//if((*front)%QLEN == (*rear+1)%QLEN) return 1;
 	if(*front == *rear) return 1;
 	else return 0;
 }
