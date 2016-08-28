@@ -78,8 +78,13 @@ int getnummachines(char *taskfile) {
 //int rear[4] = {0};
 
 int isempty(int *front, int *rear) {
-	if((*front)%QLEN == (*rear+1)%QLEN) return 1;
+	//if((*front)%QLEN == (*rear+1)%QLEN) return 1;
 	if(*front == *rear) return 1;
+	else return 0;
+}
+
+int isfull(int *front, int *rear) {
+	if((*front)%QLEN == (*rear+1)%QLEN) return 1;
 	else return 0;
 }
 
