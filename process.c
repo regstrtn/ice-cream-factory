@@ -32,10 +32,17 @@ int timereq[100];
 char tasks[100][100];
 int jobsdone = 0;
 int jobstoperform = 11;
+int tasksdone[100] = {0};
 
 void sighandler(int sig_num) {
 	int i = 0;
-	printf("Jobs done by pid %d : %d\n", getpid(), jobsdone);
+	printf("PID:%d Jobs:%d ", getpid(), jobsdone);
+	for(i=0;i<numtasks;i++) {
+		if(tasksdone[i]>0) {
+			printf("%s:%d ", tasks[i], tasksdone[i]);
+		}
+	}
+	printf("\n");
 	for(i=0;i<nummachines;i++) {
 		sem_unlink(semnames[i]);
 		//perror("Signal handler. sem_unlink: ");
@@ -72,6 +79,7 @@ int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, in
 	int qempty = 1;
 	int * sem_q = sem_open(sem_name, 0);
 	int *semp = sem_open("/partial", 0);
+	int tasktype = 0;
 	while(1) {
 		sem_wait(sem_q);
 	  if((qempty = isempty(&qinfo_child[j], &qinfo_child[nummachines+1+j])==1)) { 
@@ -83,6 +91,8 @@ int startmachine(job* job_child, int *statusvar,int instance, char *sem_name, in
 		job currjob = popq(job_child, &qinfo_child[j], &qinfo_child[nummachines+1+j]);
 		printf("%s %s:%s %d", currjob.name, machinename, currjob.taskorder[currjob.currenttasknum], getpid());
 		usleep(100*1000);
+		tasktype = gettasknum(currjob.taskorder[currjob.currenttasknum]);
+		tasksdone[tasktype]++;
 		currjob.currenttasknum++;
 		if(currjob.currenttasknum==currjob.totaltasks) printf(" %d Finished\n", currjob.totaltasks-currjob.currenttasknum);
 		else printf(" %d Waiting \n",currjob.totaltasks-currjob.currenttasknum);
@@ -193,6 +203,7 @@ int buildjobqs() {
 		i = 0;
 		pollchildren(qlist, statusarr, instance, qinfo, partial_parent, partial_sem, totaljobs);
 		//End everything gracefully after jobs done
+		usleep(300*1000);
 		for(i=0;i<instance;i++)  kill(pid[i], SIGINT);//kill child process
 		for(i=0;i<nummachines;i++)	{
 			shmctl(shmid[i], IPC_RMID, 0);

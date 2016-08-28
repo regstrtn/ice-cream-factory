@@ -89,10 +89,17 @@ int getqueuenum(char *targetmachine) {
 	}
 }
 
+int gettasknum(char *taskname) {
+	int i = 0;
+	for(i=0;i<numtasks;i++) {
+		if(strcmp(taskname, tasks[i])==0) return i;
+	}
+}
+
 void printq(job *jq, int front, int rear) {
 	int i = 0;
 	i = front;
-	for(i=front;i<rear;i++) printf("JobName: %s\n", jq[i].name);
+	for(i=front;i<rear;i++) printf("JobName: %s ", jq[i].name);
 }
 
 void insertq(job *jq, job a, int *front, int *rear) {
@@ -211,7 +218,7 @@ int listjobs(FILE *fpjob, job* joblist[], int qinfo[], int jobstoperform) {
 				while(getline(&buffer, &bufsize, fpjob)>0) {
 					totaljobs++;
 					sscanf(buffer, "%s%n", jobname, &bytesnow);	
-				  printf("Jobname: %s\n", jobname);
+				  printf("Jobname: %s ", jobname);
 					//strcpy(joblistqueuenum[i].name, s);
 					bytesread = bytesnow;
 					j = 0;	
