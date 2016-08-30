@@ -213,8 +213,8 @@ int buildjobqs() {
 		i = 0;
 		pollchildren(qlist, statusarr, instance, qinfo, partial_parent, partial_sem, totaljobs);
 		//End everything gracefully after jobs done
-		usleep(300*1000);
 		for(i=0;i<instance;i++)  kill(pid[i], SIGINT);//kill child process
+		usleep(300*1000);
 		for(i=0;i<nummachines;i++)	{
 			shmctl(shmid[i], IPC_RMID, 0);
 			sem_unlink(semnames[i]);
